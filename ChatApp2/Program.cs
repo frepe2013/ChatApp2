@@ -1,7 +1,10 @@
+using ChatApp2.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddSingleton<ITemplateRepository, InMemoryTemplateRepository>();
 
 var app = builder.Build();
 

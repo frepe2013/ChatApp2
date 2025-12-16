@@ -1,0 +1,23 @@
+﻿@page
+@model ChatApp2.Pages.QnAModel
+@{
+    ViewData["Title"] = "質問と回答";
+}
+
+<h2>質問と回答</h2>
+
+<form method="post" asp-page-handler="Ask">
+    <label for="q">質問</label>
+    <input id="q" name="Question" value="@Model.Question" />
+    <button type="submit">送信</button>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.Answer))
+{
+    <h3>回答</h3>
+    <textarea rows="5" style="width:100%;">@Model.Answer</textarea>
+}
+else
+{
+    <p>適切な回答が見つかりませんでした。</p>
+}
