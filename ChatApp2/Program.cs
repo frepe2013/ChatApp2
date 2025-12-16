@@ -21,6 +21,9 @@ builder.Services.AddHttpClient<IAIClient, OllamaClient>((sp, http) =>
     http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds <= 0 ? 60 : opt.TimeoutSeconds);
 });
 
+// テキストQAサービス
+builder.Services.AddSingleton<ITextAnswerService, TextAnswerService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

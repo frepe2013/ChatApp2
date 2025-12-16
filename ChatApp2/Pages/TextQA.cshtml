@@ -1,0 +1,40 @@
+﻿@page
+@model ChatApp2.Pages.TextQAModel
+@{
+    ViewData["Title"] = "テキストQA";
+}
+
+<h1>テキストから回答</h1>
+
+<form method="post">
+    <div class="mb-3">
+        <label class="form-label" for="SourceText">テキスト</label>
+        <textarea id="SourceText" name="SourceText" class="form-control" rows="10">@Model.SourceText</textarea>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="Question">質問</label>
+        <input id="Question" name="Question" class="form-control" value="@Model.Question" />
+    </div>
+    <button type="submit" class="btn btn-primary">回答を生成</button>
+</form>
+
+@if (!ModelState.IsValid)
+{
+    <div class="alert alert-danger mt-3">
+        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@err.ErrorMessage</div>
+        }
+    </div>
+}
+
+@if (Model.Answers.Length > 0)
+{
+    <h2 class="mt-4">回答候補</h2>
+    <ol>
+        @foreach (var ans in Model.Answers)
+        {
+            <li>@ans</li>
+        }
+    </ol>
+}
