@@ -4,7 +4,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddSingleton<ITemplateRepository, InMemoryTemplateRepository>();
+
+// JSONファイルのパスを決定（コンテンツとして配置）
+var jsonPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "templates.json");
+
+// Json ベースのレポジトリを DI に登録
+builder.Services.AddSingleton<ITemplateRepository>(sp => new JsonTemplateRepository(jsonPath));
 
 var app = builder.Build();
 
