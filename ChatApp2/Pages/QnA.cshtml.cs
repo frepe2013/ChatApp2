@@ -6,11 +6,11 @@ namespace ChatApp2.Pages
 {
     public sealed class QnAModel : PageModel
     {
-        private readonly ITemplateRepository _repo;
+        private readonly IAIClient _ai;
 
-        public QnAModel(ITemplateRepository repo)
+        public QnAModel(IAIClient ai)
         {
-            _repo = repo;
+            _ai = ai;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -18,14 +18,17 @@ namespace ChatApp2.Pages
 
         public string? Answer { get; private set; }
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            Answer = _repo.FindBestAnswer(Question)?.Text;
+            if (!string.IsNullOrWhiteSpace(Question))
+            {
+                Answer = await _ai.AskAsync(Question, HttpContext.RequestAborted);
+            }
         }
 
-        public IActionResult OnPostAsk()
+        public async Task<IActionResult> OnPostAskAsync()
         {
-            Answer = _repo.FindBestAnswer(Question)?.Text;
+            Answer = await _ai.AskAsync(Question, HttpContext.RequestAborted);
             return Page();
         }
     }

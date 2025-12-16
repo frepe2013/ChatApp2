@@ -1,15 +1,25 @@
 using ChatApp2.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 任意: 専用設定ファイル（存在すれば読み込み）
+builder.Configuration.AddJsonFile("appsettings.Ollama.json", optional: true, reloadOnChange: true);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 
-// JSONファイルのパスを決定（コンテンツとして配置）
-var jsonPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "templates.json");
+// Ollama 設定
+builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection("Ollama"));
 
-// Json ベースのレポジトリを DI に登録
-builder.Services.AddSingleton<ITemplateRepository>(sp => new JsonTemplateRepository(jsonPath));
+// Typed HttpClient 登録（BaseUrl/Timeout は設定から）
+builder.Services.AddHttpClient<IAIClient, OllamaClient>((sp, http) =>
+{
+    var opt = sp.GetRequiredService<IOptionsMonitor<OllamaOptions>>().CurrentValue;
+    var baseUrl = string.IsNullOrWhiteSpace(opt.BaseUrl) ? "http://localhost:11434" : opt.BaseUrl!;
+    http.BaseAddress = new Uri(baseUrl);
+    http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds <= 0 ? 60 : opt.TimeoutSeconds);
+});
 
 var app = builder.Build();
 
