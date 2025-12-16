@@ -1,0 +1,47 @@
+﻿@page
+@model ChatApp2.Pages.AskModel
+@{
+    ViewData["Title"] = "AIに文脈を追加して質問";
+}
+
+<h1>AIに文脈を追加して質問</h1>
+
+<form method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label class="form-label" for="Question">質問</label>
+        <input id="Question" name="Question" class="form-control" value="@Model.Question" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="ContextText">追加の文脈テキスト（任意）</label>
+        <textarea id="ContextText" name="ContextText" class="form-control" rows="8">@Model.ContextText</textarea>
+        <div class="form-text">長文すぎる場合は先頭から一部のみ使用されます。</div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="UploadFiles">ファイル添付（.txt/.md/.csv/.log）</label>
+        <input id="UploadFiles" name="UploadFiles" class="form-control" type="file" multiple />
+    </div>
+
+    <button type="submit" class="btn btn-primary">送信</button>
+</form>
+
+@if (!ModelState.IsValid)
+{
+    <div class="alert alert-danger mt-3">
+        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@err.ErrorMessage</div>
+        }
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Answer))
+{
+    <h2 class="mt-4">回答</h2>
+    <div class="card">
+        <div class="card-body">
+            <pre class="mb-0">@Model.Answer</pre>
+        </div>
+    </div>
+}
