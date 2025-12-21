@@ -40,10 +40,10 @@ if (Directory.Exists(contextDir))
             if (content.Length == 0) continue;
 
             // 軽量要約（見出し行＋先頭数百文字）
-            var summary = SummarizeLightweight(content, maxCharsPerFile: 1500);
+            //var summary = SummarizeLightweight(content, maxCharsPerFile: 1500);
 
             sb.AppendLine($"[BEGIN {Path.GetFileName(f)}]");
-            sb.AppendLine(summary);
+            sb.AppendLine(content);
             sb.AppendLine($"[END {Path.GetFileName(f)}]");
             sb.AppendLine();
         }
@@ -61,7 +61,7 @@ builder.Services.PostConfigure<OllamaOptions>(opt =>
             : $"{opt.SystemPrompt}\n\n{combinedContext}";
 
         // 設定上限（既定 10000 文字）で安全に切り詰め
-        var max = opt.MaxSystemPromptChars <= 0 ? 10000 : opt.MaxSystemPromptChars;
+        var max = opt.MaxSystemPromptChars;
         opt.SystemPrompt = merged.Length > max ? merged[..max] : merged;
     }
 });
