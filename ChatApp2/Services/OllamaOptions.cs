@@ -17,5 +17,8 @@
         public int TimeoutSeconds { get; set; } = 60;
 
         public string? SystemPrompt { get; set; }
+
+        // SystemPromptの最大文字数（既定 10000）
+        public int MaxSystemPromptChars { get; set; } = 10000;
     }
 }

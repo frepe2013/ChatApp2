@@ -1,4 +1,6 @@
 using ChatApp2.Services;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Options;
 using System.Text;
 
@@ -19,7 +21,10 @@ string? combinedContext = null;
 if (Directory.Exists(contextDir))
 {
     var files = Directory.EnumerateFiles(contextDir, "*.*", SearchOption.TopDirectoryOnly)
-        .Where(f => f.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        .Where(f =>
+            f.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+            || f.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+            || f.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
         .ToArray();
 
@@ -28,11 +33,17 @@ if (Directory.Exists(contextDir))
         var sb = new StringBuilder();
         foreach (var f in files)
         {
-            var content = File.ReadAllText(f).Trim();
-            if (content.Length == 0)
-                continue;
+            string content = f.EndsWith(".docx", StringComparison.OrdinalIgnoreCase)
+                ? ReadDocxBodyText(f).Trim()
+                : File.ReadAllText(f).Trim();
+
+            if (content.Length == 0) continue;
+
+            // 軽量要約（見出し行＋先頭数百文字）
+            var summary = SummarizeLightweight(content, maxCharsPerFile: 1500);
+
             sb.AppendLine($"[BEGIN {Path.GetFileName(f)}]");
-            sb.AppendLine(content);
+            sb.AppendLine(summary);
             sb.AppendLine($"[END {Path.GetFileName(f)}]");
             sb.AppendLine();
         }
@@ -45,9 +56,13 @@ builder.Services.PostConfigure<OllamaOptions>(opt =>
 {
     if (!string.IsNullOrWhiteSpace(combinedContext))
     {
-        opt.SystemPrompt = string.IsNullOrWhiteSpace(opt.SystemPrompt)
+        var merged = string.IsNullOrWhiteSpace(opt.SystemPrompt)
             ? combinedContext
             : $"{opt.SystemPrompt}\n\n{combinedContext}";
+
+        // 設定上限（既定 10000 文字）で安全に切り詰め
+        var max = opt.MaxSystemPromptChars <= 0 ? 10000 : opt.MaxSystemPromptChars;
+        opt.SystemPrompt = merged.Length > max ? merged[..max] : merged;
     }
 });
 
@@ -83,3 +98,75 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.Run();
+
+// --- docx本文抽出（Open XML SDK） ---
+static string ReadDocxBodyText(string filePath)
+{
+    var sb = new StringBuilder();
+
+    using var doc = WordprocessingDocument.Open(filePath, false);
+    var body = doc.MainDocumentPart?.Document?.Body;
+    if (body is null)
+        return string.Empty;
+
+    foreach (var element in body.Elements())
+    {
+        switch (element)
+        {
+            case Paragraph p:
+                var line = string.Concat(p.Descendants<Text>().Select(t => t.Text));
+                sb.AppendLine(line);
+                break;
+
+            case Table table:
+                foreach (var row in table.Descendants<TableRow>())
+                {
+                    var cells = row.Descendants<TableCell>()
+                        .Select(c => string.Join(" ", c.Descendants<Paragraph>()
+                            .Select(pg => string.Concat(pg.Descendants<Text>().Select(t => t.Text)).Trim())))
+                        .ToArray();
+                    if (cells.Length > 0)
+                    {
+                        sb.AppendLine(string.Join("\t", cells));
+                    }
+                }
+                sb.AppendLine();
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    return sb.ToString().Trim();
+}
+
+// --- 簡易要約：見出し抽出＋先頭抜粋 ---
+static string SummarizeLightweight(string content, int maxCharsPerFile)
+{
+    // 見出し（Markdownの#）と最初の数段落を優先
+    var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+    var sb = new StringBuilder();
+    foreach (var line in lines)
+    {
+        if (line.TrimStart().StartsWith("#"))
+            sb.AppendLine(line.Trim());
+        if (sb.Length > 2000)
+            break;
+    }
+
+    if (sb.Length < 500)
+    {
+        // 先頭抜粋（段落単位）
+        var paragraphs = content.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var p in paragraphs.Take(5))
+        {
+            sb.AppendLine(p.Trim());
+            if (sb.Length > 2000)
+                break;
+        }
+    }
+
+    var summary = sb.Length > 0 ? sb.ToString().Trim() : content;
+    return summary.Length > maxCharsPerFile ? summary[..maxCharsPerFile] : summary;
+}
